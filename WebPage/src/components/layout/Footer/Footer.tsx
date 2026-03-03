@@ -1,11 +1,10 @@
 import React from "react";
 
-const Footer: React.FC = () => {
-    return (
-        <div>
-            <small>© {new Date().getFullYear()} Example App</small>
-        </div>
-    );
-};
-
-export default Footer;
+export default function Footer() {
+  return (
+    <div className="cluster" style={{ justifyContent: "space-between" }}>
+      <small>© {new Date().getFullYear()} Example App</small>
+      <span className="pill">v1.0</span>
+    </div>
+  );
+}

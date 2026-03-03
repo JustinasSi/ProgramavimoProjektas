@@ -1,21 +1,25 @@
 import React from "react";
 
 export interface RightPanelProps {
-    title?: string;
-    children?: React.ReactNode;
+  title?: string;
+  sources?: { id: string; name: string; href?: string }[];
 }
 
-const RightPanel: React.FC<RightPanelProps> = ({ title = "Details", children }) => {
-    return (
-        <section aria-labelledby="right-panel-title">
-            <h2 id="right-panel-title" style={{ fontSize: "1rem", margin: "0 0 .5rem" }}>
-                {title}
-            </h2>
-            <div>
-                {children ?? <p>Right panel content placeholder.</p>}
-            </div>
-        </section>
-    );
-};
-
-export default RightPanel;
+export default function RightPanel({ title = "Sources", sources = [] }: RightPanelProps) {
+  return (
+    <section aria-labelledby="sources-title" className="panel" style={{ marginTop: 16 }}>
+      <h2 id="sources-title" style={{ marginBottom: 12 }}>{title}</h2>
+      {sources.length === 0 ? (
+        <p className="lead">No sources available.</p>
+      ) : (
+        <ul style={{ paddingLeft: 18, margin: 0 }}>
+          {sources.map(s => (
+            <li key={s.id} style={{ marginBottom: 8 }}>
+              {s.href ? <a href={s.href}>{s.name}</a> : s.name}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}

@@ -1,85 +1,52 @@
-import React, {type PropsWithChildren } from "react";
-import styles from "./PageLayout.module.css";
+import type { ReactNode } from "react";
 
-export type PageLayoutProps = PropsWithChildren<{
-    /** Controls whether the left sidebar is visible (collapsible) */
-    sidebarOpen?: boolean;
-    /** Controls whether to render the optional right panel */
-    showRightPanel?: boolean;
-    /** Optional top navigation items */
-    topNav?: React.ReactNode;
-    /** Right panel content (sources, details, etc.) */
-    rightPanel?: React.ReactNode;
-    /** Footer (optional) */
-    footer?: React.ReactNode;
-    /** Header content (logo + title) */
-    header: React.ReactNode;
-    /** Sidebar content (navigation, filters, chat history) */
-    sidebar?: React.ReactNode;
-    /** Main toolbar (optional controls above main content) */
-    mainToolbar?: React.ReactNode;
-}>;
+export interface PageLayoutProps {
+  header: ReactNode;
+  topNav?: ReactNode;
+  leftColumn?: ReactNode;     // e.g., chat history / navigation
+  rightMain: ReactNode;       // main content (chat area)
+  footer?: ReactNode;
+}
 
-export const PageLayout: React.FC<PageLayoutProps> = ({
-                                                          header,
-                                                          topNav,
-                                                          sidebar,
-                                                          rightPanel,
-                                                          footer,
-                                                          mainToolbar,
-                                                          sidebarOpen = true,
-                                                          showRightPanel = true,
-                                                          children
-                                                      }) => {
-    return (
-        <div className={styles.root}>
-            {/* Landmark: header */}
-            <header className={styles.header} role="banner" aria-label="Application header">
-                {header}
-            </header>
+export default function PageLayout({
+  header,
+  topNav,
+  leftColumn,
+  rightMain,
+  footer
+}: PageLayoutProps) {
+  return (
+    <>
+      {/* Accessibility: skip to main */}
+      <a className="skip-link" href="#main">Skip to main content</a>
 
-            {/* Landmark: navigation (top link bar) */}
-            {topNav && (
-                <nav className={styles.topnav} aria-label="Primary">
-                    {topNav}
-                </nav>
-            )}
-
-            {/* Landmark: complementary (left sidebar) */}
-            {sidebar && (
-                <aside
-                    className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : styles.sidebarClosed}`}
-                    aria-label="Sidebar"
-                >
-                    {sidebar}
-                </aside>
-            )}
-
-            {/* Landmark: main */}
-            <main id="main" className={styles.main} role="main" aria-label="Main content">
-                {mainToolbar && (
-                    <div className={styles.mainToolbar} aria-label="Main toolbar">
-                        {mainToolbar}
-                    </div>
-                )}
-                <div className={styles.mainBody}>
-                    {children}
-                </div>
-            </main>
-
-            {/* Landmark: complementary (right info panel) */}
-            {showRightPanel && rightPanel && (
-                <aside className={styles.right} aria-label="Right panel">
-                    {rightPanel}
-                </aside>
-            )}
-
-            {/* Landmark: contentinfo (footer) */}
-            {footer && (
-                <footer className={styles.footer} role="contentinfo" aria-label="Footer">
-                    {footer}
-                </footer>
-            )}
+      {/* App bar */}
+      <div className="appbar">
+        <div className="container appbar-inner">
+          {header}
+          {topNav /* placed inside the bar to align with your .nav styles */}
         </div>
-    );
-};
+      </div>
+
+      {/* Main section – uses your hero + hero-layout */}
+      <main id="main" className="container" aria-label="Main content" style={{ paddingTop: 24, paddingBottom: 24 }}>
+        <section className="hero">
+          <div className="hero-layout">
+            {/* Left column (320px on desktop per CSS) */}
+            <div aria-label="Left column">
+              {leftColumn}
+            </div>
+
+            {/* Right (1fr) main content */}
+            <div aria-label="Primary content">
+              {rightMain}
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer (your CSS already styles footer tag) */}
+      {footer && <footer className="container">{footer}</footer>}
+    </>
+  );
+}
