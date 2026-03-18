@@ -2,17 +2,37 @@ import os
 from pathlib import Path
 from groq import Groq
 from dotenv import load_dotenv
-from langchain_huggingface import HuggingFaceEmbeddings
+import requests
+from langchain_core.embeddings import Embeddings
 from langchain_community.vectorstores import Chroma
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
+
+class HFEmbeddings(Embeddings):
+    def __init__(self, api_key: str, model_name: str):
+        self.api_url = f"https://router.huggingface.co/hf-inference/models/{model_name}/pipeline/feature-extraction"
+        self.headers = {"Authorization": f"Bearer {api_key}"}
+
+    def embed_documents(self, texts: list) -> list:
+        response = requests.post(
+            self.api_url,
+            headers=self.headers,
+            json={"inputs": texts, "options": {"wait_for_model": True}},
+        )
+        return response.json()
+
+    def embed_query(self, text: str) -> list:
+        return self.embed_documents([text])[0]
+
+
 # Load the vector store
 CHROMA_DIR = Path(__file__).resolve().parent / "chroma_db"
-embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+embeddings = HFEmbeddings(
+    api_key=os.getenv("HF_API_KEY"),
+    model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
 )
 vectorstore = Chroma(
     persist_directory=str(CHROMA_DIR),

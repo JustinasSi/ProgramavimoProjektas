@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 const CHATBOT_NAME = "askKTU Chatbot";
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 type ChatRole = "user" | "assistant";
 
@@ -16,14 +17,11 @@ function formatMessageTime(ms: number): string {
   return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
-/** Placeholder until backend is connected. Replace with API call that returns bot response. */
-function getPlaceholderBotReply(): string {
-  return "Reply from chatbot. (Backend will provide real responses.)";
-}
 
 export default function Chat() {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [isOnline] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -32,9 +30,9 @@ export default function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const trimmed = input.trim();
-    if (!trimmed) return;
+    if (!trimmed || isLoading) return;
 
     const now = Date.now();
     const userMessage: ChatMessage = {
@@ -45,16 +43,37 @@ export default function Chat() {
     };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
+    setIsLoading(true);
 
-    // Placeholder: add bot reply locally. Replace with backend call that pushes assistant message when ready.
-    const botText = getPlaceholderBotReply();
-    const botMessage: ChatMessage = {
-      id: `assistant-${now + 1}`,
-      role: "assistant",
-      text: botText,
-      timestamp: now + 1,
-    };
-    setMessages((prev) => [...prev, botMessage]);
+    try {
+      const history = messages.map((m) => ({
+        role: m.role,
+        content: m.text,
+      }));
+      const res = await fetch(`${API_URL}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: trimmed, conversation_history: history }),
+      });
+      const data = await res.json();
+      const botMessage: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        text: data.response,
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => [...prev, botMessage]);
+    } catch {
+      const errorMessage: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        text: "Sorry, I couldn't reach the server. Please try again.",
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -111,7 +130,7 @@ export default function Chat() {
         aria-live="polite"
         tabIndex={0}
       >
-        {messages.length === 0 && (
+        {messages.length === 0 && !isLoading && (
           <p className="chat-messages-empty" aria-live="polite">
             Start a conversation
           </p>
@@ -169,6 +188,14 @@ export default function Chat() {
             )}
           </div>
         ))}
+        {isLoading && (
+          <div className="chat-message chat-message--assistant">
+            <div className="chat-message-body">
+              <div className="chat-message-name">{CHATBOT_NAME}</div>
+              <div className="chat-message-text">Thinking...</div>
+            </div>
+          </div>
+        )}
         <div ref={messagesEndRef} aria-hidden="true" />
       </div>
 
@@ -190,7 +217,7 @@ export default function Chat() {
           type="button"
           className="chat-send"
           onClick={handleSend}
-          disabled={!input.trim()}
+          disabled={!input.trim() || isLoading}
           aria-label="Send message"
         >
           <svg
