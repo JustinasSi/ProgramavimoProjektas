@@ -297,6 +297,41 @@ p, ul, ol {
   outline: 3px solid var(--focus-ring);
   outline-offset: 2px;
 }
+/* Active session — same blue → purple language as “Create new chat” (subtle fill + left rail) */
+.chat-history-item--active {
+  background: linear-gradient(
+    90deg,
+    rgba(80, 97, 225, 0.16) 0%,
+    rgba(142, 55, 215, 0.09) 100%
+  );
+  box-shadow: inset 3px 0 0 #5061e1;
+}
+.chat-history-item--active:hover {
+  background: linear-gradient(
+    90deg,
+    rgba(80, 97, 225, 0.2) 0%,
+    rgba(142, 55, 215, 0.12) 100%
+  );
+}
+[data-theme="dark"] .chat-history-item--active {
+  background: linear-gradient(
+    90deg,
+    rgba(80, 97, 225, 0.28) 0%,
+    rgba(142, 55, 215, 0.16) 100%
+  );
+  box-shadow: inset 3px 0 0 #6366f1;
+}
+[data-theme="dark"] .chat-history-item--active:hover {
+  background: linear-gradient(
+    90deg,
+    rgba(80, 97, 225, 0.34) 0%,
+    rgba(142, 55, 215, 0.2) 100%
+  );
+}
+.chat-history-item--active .chat-history-item-time {
+  color: var(--text-primary);
+  opacity: 0.85;
+}
 .chat-history-item-title {
   font-weight: 600;
   font-size: var(--fs-200);

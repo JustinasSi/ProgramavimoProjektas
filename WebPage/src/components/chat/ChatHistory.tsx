@@ -7,6 +7,8 @@ export interface ChatSession {
 
 export interface ChatHistoryProps {
   sessions: ChatSession[];
+  /** Which session is open in the main chat (drives list highlight). */
+  activeSessionId?: string | null;
   /** Called when the user selects a session (navigation wired later). */
   onSelectSession?: (sessionId: string) => void;
   /** Called when the user starts a new chat (parent adds a session, resets chat, etc.). */
@@ -25,6 +27,7 @@ function formatSessionTime(ms: number): string {
 
 export default function ChatHistory({
   sessions,
+  activeSessionId = null,
   onSelectSession,
   onCreateNewChat,
 }: ChatHistoryProps) {
@@ -47,11 +50,17 @@ export default function ChatHistory({
           </p>
         ) : (
           <ul className="chat-history-list">
-            {sessions.map((session) => (
+            {sessions.map((session) => {
+              const isActive = session.id === activeSessionId;
+              return (
               <li key={session.id}>
                 <button
                   type="button"
-                  className="chat-history-item"
+                  className={
+                    "chat-history-item" +
+                    (isActive ? " chat-history-item--active" : "")
+                  }
+                  aria-current={isActive ? "true" : undefined}
                   onClick={() => onSelectSession?.(session.id)}
                 >
                   <span className="chat-history-item-title">{session.title}</span>
@@ -63,7 +72,8 @@ export default function ChatHistory({
                   </time>
                 </button>
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </div>

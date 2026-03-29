@@ -63,6 +63,7 @@ export default function HomePage({ theme, onToggleTheme }: HomePageProps) {
       leftColumn={
         <ChatHistory
           sessions={sessions}
+          activeSessionId={activeSessionId}
           onCreateNewChat={handleCreateNewChat}
           onSelectSession={handleSelectSession}
         />
