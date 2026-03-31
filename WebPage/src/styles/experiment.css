@@ -631,3 +631,34 @@ footer { padding: var(--sp-6) 0 var(--sp-7); color: var(--text-secondary); }
   color: var(--text-secondary);
   font-size: var(--fs-100);
 }
+
+.download-btn {
+  padding: 12.5px 30px;
+  border: 0;
+  border-radius: 100px;
+  background-color: #2ba8fb;
+  color: #ffffff;
+  font-weight: Bold;
+  transition: all 0.5s;
+  -webkit-transition: all 0.5s;
+  cursor: pointer;
+
+}
+
+.download-btn:hover {
+  background-color: #0052a3;
+}
+
+.document-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.document-info {
+  flex: 1;
+  max-width: 80%;           /* ← This is the key: limits the text area */
+  min-width: 0;               /* Allows flex shrinking + text wrapping */
+}

@@ -23,6 +23,16 @@ export default function DocumentList() {
             });
     }, []);
 
+    const handleDownload = (fileName: string) => {
+        // This will trigger download from the backend
+        const link = document.createElement("a");
+        link.href = `/documents/${fileName}`;        // Uses Vite proxy
+        link.download = fileName;                    // Forces download with original name
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
         <div className="document-list">
             <h2>Documents</h2>
@@ -30,17 +40,24 @@ export default function DocumentList() {
             {loading && <p>Loading...</p>}
             {error && <p>Could not load documents.</p>}
 
-            <ul>
                 {documents.map((doc, index) => (
                     <li key={index} className="document-item">
-                        <div>
+                        <div className="document-info">
                             <strong>{doc.name}</strong>
                             <p>PDF Document</p>
                         </div>
-                        <span className="document-size">{doc.size}</span>
+                        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                            <span className="document-size">{doc.size}</span>
+                            <button
+                                onClick={() => handleDownload(doc.name)}
+                                className="download-btn"
+                                title="Download document"
+                            >
+                                Download
+                            </button>
+                        </div>
                     </li>
                 ))}
-            </ul>
         </div>
     );
 }
