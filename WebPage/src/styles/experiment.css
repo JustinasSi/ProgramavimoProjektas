@@ -297,7 +297,7 @@ p, ul, ol {
   align-items: flex-start;
   gap: 4px;
   padding: var(--sp-3);
-  padding-right: 42px;
+  padding-right: 78px;
   margin: 0;
   border: 0;
   border-radius: var(--radius-10);
@@ -316,10 +316,6 @@ p, ul, ol {
   outline-offset: 2px;
 }
 .chat-history-edit-trigger {
-  position: absolute;
-  top: 50%;
-  right: 6px;
-  transform: translateY(-50%);
   width: 30px;
   height: 30px;
   border: 0;
@@ -338,6 +334,45 @@ p, ul, ol {
 .chat-history-edit-trigger:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
+}
+.chat-history-item-controls {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.chat-history-delete-trigger {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #ef4444;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.chat-history-delete-trigger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.10);
+}
+.chat-history-delete-trigger:disabled,
+.chat-history-edit-trigger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.chat-history-delete-error {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  color: #ef4444;
+  font-size: var(--fs-100);
+  font-weight: 600;
 }
 .chat-history-edit {
   padding: var(--sp-3);

@@ -22,6 +22,11 @@ export interface ChatHistoryProps {
    * Throw/reject to report a save failure; the UI will keep edit mode and show retry feedback.
    */
   onRenameSession?: (sessionId: string, title: string) => void | Promise<void>;
+  /**
+   * Called when the user deletes a chat.
+   * Throw/reject to report a failure; the UI will show retry feedback.
+   */
+  onDeleteSession?: (sessionId: string) => void | Promise<void>;
 }
 
 function formatSessionTime(ms: number): string {
@@ -40,6 +45,7 @@ export default function ChatHistory({
   onSelectSession,
   onCreateNewChat,
   onRenameSession,
+  onDeleteSession,
 }: ChatHistoryProps) {
   const hasSessions = sessions.length > 0;
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
@@ -47,6 +53,9 @@ export default function ChatHistory({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savingSessionId, setSavingSessionId] = useState<string | null>(null);
+  const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
+  const [deleteErrorSessionId, setDeleteErrorSessionId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const editingSession = useMemo(
@@ -124,6 +133,28 @@ export default function ChatHistory({
     }
   };
 
+  const confirmAndDelete = async (session: ChatSession) => {
+    if (deletingSessionId || savingSessionId) return;
+    const ok = window.confirm("Are you sure you want to delete this chat?");
+    if (!ok) return;
+    await deleteSession(session.id);
+  };
+
+  const deleteSession = async (sessionId: string) => {
+    setDeleteErrorSessionId(null);
+    setDeleteError(null);
+    setDeletingSessionId(sessionId);
+    try {
+      await onDeleteSession?.(sessionId);
+      setToastMessage("Chat deleted successfully");
+    } catch {
+      setDeleteErrorSessionId(sessionId);
+      setDeleteError("Could not delete chat. Please try again.");
+    } finally {
+      setDeletingSessionId(null);
+    }
+  };
+
   return (
     <aside className="chat-history" aria-label="Chat sessions">
       <button
@@ -150,6 +181,7 @@ export default function ChatHistory({
               const isActive = session.id === activeSessionId;
               const isEditing = session.id === editingSessionId;
               const isSaving = session.id === savingSessionId;
+              const isDeleting = session.id === deletingSessionId;
               return (
               <li key={session.id}>
                 {!isEditing ? (
@@ -171,28 +203,70 @@ export default function ChatHistory({
                         {formatSessionTime(session.timestamp)}
                       </time>
                     </button>
-                    <button
-                      type="button"
-                      className="chat-history-edit-trigger"
-                      aria-label={`Edit name for ${session.title}`}
-                      title="Edit chat name"
-                      onClick={() => beginEdit(session)}
-                    >
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
+                    <div className="chat-history-item-controls">
+                      <button
+                        type="button"
+                        className="chat-history-edit-trigger"
+                        aria-label={`Edit name for ${session.title}`}
+                        title="Edit chat name"
+                        onClick={() => beginEdit(session)}
+                        disabled={isDeleting}
                       >
-                        <path d="M12 20h9" />
-                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                      </svg>
-                    </button>
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M12 20h9" />
+                          <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        className="chat-history-delete-trigger"
+                        aria-label={`Delete ${session.title}`}
+                        title="Delete chat"
+                        onClick={() => void confirmAndDelete(session)}
+                        disabled={isDeleting}
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M3 6h18" />
+                          <path d="M8 6V4h8v2" />
+                          <path d="M19 6l-1 14H6L5 6" />
+                          <path d="M10 11v6" />
+                          <path d="M14 11v6" />
+                        </svg>
+                      </button>
+                    </div>
+                    {deleteErrorSessionId === session.id && deleteError && (
+                      <div className="chat-history-delete-error" role="alert">
+                        <span>{deleteError}</span>
+                        <button
+                          type="button"
+                          className="chat-history-inline-btn chat-history-inline-btn--retry"
+                          onClick={() => void deleteSession(session.id)}
+                          disabled={isDeleting}
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="chat-history-edit">

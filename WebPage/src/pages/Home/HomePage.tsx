@@ -66,6 +66,23 @@ export default function HomePage({ theme, onToggleTheme }: HomePageProps) {
     [],
   );
 
+  const handleDeleteSession = useCallback(
+    async (sessionId: string) => {
+      setSessions((prev) => {
+        const next = prev.filter((s) => s.id !== sessionId);
+        setActiveSessionId((prevActive) =>
+          prevActive === sessionId ? (next[0]?.id ?? null) : prevActive,
+        );
+        return next;
+      });
+      setMessagesBySession((prev) => {
+        const { [sessionId]: _removed, ...rest } = prev;
+        return rest;
+      });
+    },
+    [],
+  );
+
   const handleMessagesChange = useCallback(
     (next: ChatMessage[]) => {
       if (!activeSessionId) return;
@@ -95,6 +112,7 @@ export default function HomePage({ theme, onToggleTheme }: HomePageProps) {
           onCreateNewChat={handleCreateNewChat}
           onSelectSession={handleSelectSession}
           onRenameSession={handleRenameSession}
+          onDeleteSession={handleDeleteSession}
         />
       }
       rightMain={
