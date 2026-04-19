@@ -2,7 +2,6 @@ import { useCallback, useState } from "react";
 import PageLayout from "../../components/layout/PageLayout/PageLayout";
 import Header from "../../components/layout/Header/Header";
 import { TopNav } from "../../components/layout/TopNav/TopNav";
-import RightPanel from "../../components/layout/RightPanel/RightPanel";
 import Footer from "../../components/layout/Footer/Footer";
 import Chat, { type ChatMessage } from "../../components/chat/Chat";
 import ChatHistory, { type ChatSession } from "../../components/chat/ChatHistory";
@@ -128,19 +127,15 @@ export default function HomePage({ theme, onToggleTheme }: HomePageProps) {
         />
       }
       rightMain={
-        <>
-          <Chat
-            sessionId={activeSessionId}
-            messages={
-              activeSessionId
-                ? (messagesBySession[activeSessionId] ?? [])
-                : []
-            }
-            onMessagesChange={handleMessagesChange}
-          />
-		
-          <RightPanel /> 
-        </>
+        <Chat
+          sessionId={activeSessionId}
+          messages={
+            activeSessionId
+              ? (messagesBySession[activeSessionId] ?? [])
+              : []
+          }
+          onMessagesChange={handleMessagesChange}
+        />
       }
       footer={<Footer />}
     />
