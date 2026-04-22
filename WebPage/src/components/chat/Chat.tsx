@@ -1,4 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { normalizeCitations } from "./normalizeCitations";
+import type { NormalizedCitation } from "./normalizeCitations";
+
+export type { NormalizedCitation };
 
 const CHATBOT_NAME = "askKTU Chatbot";
 const API_URL = import.meta.env.VITE_API_URL ?? "";
@@ -10,6 +14,8 @@ export interface ChatMessage {
   role: ChatRole;
   text: string;
   timestamp: number;
+  /** RAG / retrieval sources for assistant replies (optional until API returns them). */
+  citations?: NormalizedCitation[];
   meta?: {
     kind?: "error";
     retryUserText?: string;
@@ -28,6 +34,20 @@ function formatMessageTime(ms: number): string {
   return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
+function getLatestAssistantCitations(messages: ChatMessage[]): NormalizedCitation[] {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.role === "assistant" && m.meta?.kind !== "error") {
+      return m.citations ?? [];
+    }
+  }
+  return [];
+}
+
+const TITLE_TRUNCATE = 50;
+
+
+type ChatWidgetTab = "chat" | "sources";
 
 export default function Chat({
   sessionId,
@@ -37,21 +57,28 @@ export default function Chat({
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isOnline] = useState(true);
+  const [activeTab, setActiveTab] = useState<ChatWidgetTab>("chat");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const sessionIdRef = useRef(sessionId);
   sessionIdRef.current = sessionId;
 
+  const latestSources = useMemo(
+    () => getLatestAssistantCitations(messages),
+    [messages],
+  );
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, activeTab]);
 
   useEffect(() => {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
     setIsLoading(false);
     setInput("");
+    setActiveTab("chat");
   }, [sessionId]);
 
   const handleStop = () => {
@@ -105,14 +132,16 @@ export default function Chat({
       if (!res.ok) {
         throw new Error(`Chat request failed: ${res.status}`);
       }
-      const data = (await res.json()) as { response?: string };
+      const data = (await res.json()) as { response?: string; citations?: unknown };
       if (controller.signal.aborted) return;
       if (sessionIdRef.current !== idAtSend) return;
+      const normalized = normalizeCitations(data.citations);
       const botMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: "assistant",
         text: data.response ?? "(No response text from server.)",
         timestamp: Date.now(),
+        ...(normalized.length > 0 ? { citations: normalized } : {}),
       };
       onMessagesChange([...afterUser, botMessage]);
     } catch (err) {
@@ -166,6 +195,30 @@ export default function Chat({
     }
   };
 
+  const lastAssistantId = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.role === "assistant" && m.meta?.kind !== "error") return m.id;
+    }
+    return null;
+  }, [messages]);
+
+  const handleTabsKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveTab("sources");
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveTab("chat");
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      setActiveTab("chat");
+    } else if (e.key === "End") {
+      e.preventDefault();
+      setActiveTab("sources");
+    }
+  };
+
   return (
     <section className="chat" aria-label="Chat" aria-busy={isLoading}>
       <header className="chat-header">
@@ -205,14 +258,54 @@ export default function Chat({
         </div>
       </header>
 
-      <div
-        ref={listRef}
-        className="chat-messages"
-        role="log"
-        aria-label="Chat message list"
-        aria-live="polite"
-        tabIndex={0}
-      >
+      <div className="chat-body">
+        <div
+          className="chat-tabs"
+          role="tablist"
+          aria-label="Chat widget sections"
+          onKeyDown={handleTabsKeyDown}
+        >
+          <button
+            type="button"
+            className="chat-tab"
+            role="tab"
+            id="chat-tab-chat"
+            aria-selected={activeTab === "chat"}
+            aria-controls="chat-tabpanel-chat"
+            tabIndex={activeTab === "chat" ? 0 : -1}
+            onClick={() => setActiveTab("chat")}
+          >
+            Chat
+          </button>
+          <button
+            type="button"
+            className="chat-tab"
+            role="tab"
+            id="chat-tab-sources"
+            aria-selected={activeTab === "sources"}
+            aria-controls="chat-tabpanel-sources"
+            tabIndex={activeTab === "sources" ? 0 : -1}
+            onClick={() => setActiveTab("sources")}
+          >
+            Sources
+          </button>
+        </div>
+
+        <div
+          id="chat-tabpanel-chat"
+          className="chat-tabpanel-chat"
+          role="tabpanel"
+          aria-labelledby="chat-tab-chat"
+          hidden={activeTab !== "chat"}
+        >
+          <div
+            ref={listRef}
+            className="chat-messages"
+            role="log"
+            aria-label="Chat message list"
+            aria-live="polite"
+            tabIndex={0}
+          >
         {messages.length === 0 && !isLoading && (
           <p className="chat-messages-empty" aria-live="polite">
             {sessionId === null
@@ -319,6 +412,88 @@ export default function Chat({
           </div>
         )}
         <div ref={messagesEndRef} aria-hidden="true" />
+          </div>
+        </div>
+
+        <div
+          id="chat-tabpanel-sources"
+          className="chat-sources-panel"
+          role="tabpanel"
+          aria-labelledby="chat-tab-sources"
+          hidden={activeTab !== "sources"}
+        >
+          <p key={lastAssistantId ?? "none"} className="visually-hidden" aria-live="polite">
+            {latestSources.length === 0
+              ? "No sources used for this response."
+              : `Sources list updated: ${latestSources.length} reference${latestSources.length === 1 ? "" : "s"}.`}
+          </p>
+          {latestSources.length === 0 ? (
+            <p className="chat-sources-empty" role="status">
+              No sources used for this response.
+            </p>
+          ) : (
+            <ul className="chat-sources-list" aria-label="Document references for the latest reply">
+              {latestSources.map((c, i) => {
+                const titleFull = c.documentTitle;
+                const titleTrunc =
+                  titleFull.length > TITLE_TRUNCATE
+                    ? `${titleFull.slice(0, TITLE_TRUNCATE)}…`
+                    : titleFull;
+                const titleId = `chat-source-title-${i}`;
+                return (
+                  <li key={`${c.documentTitle}-${c.paragraphLabel}-${i}`} className="chat-sources-item">
+                    <div className="chat-source-block" aria-labelledby={titleId}>
+                      <h3
+                        id={titleId}
+                        className="chat-source-doc-title"
+                        title={titleFull.length >= TITLE_TRUNCATE ? titleFull : undefined}
+                      >
+                        {titleTrunc}
+                      </h3>
+                      <p className="chat-source-para-ref">{c.paragraphLabel}</p>
+                      {c.snippet ? (
+                        <p className="chat-source-snippet">{c.snippet}</p>
+                      ) : null}
+                      <div className="chat-source-link-row">
+                        {c.url && !c.linkInvalid ? (
+                          <a
+                            className="chat-source-link"
+                            href={c.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Open document
+                          </a>
+                        ) : c.linkInvalid ? (
+                          <span className="chat-source-link-broken">
+                            <span className="chat-source-warn-icon" aria-hidden="true">
+                              <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                                <line x1="12" y1="9" x2="12" y2="13" />
+                                <line x1="12" y1="17" x2="12.01" y2="17" />
+                              </svg>
+                            </span>
+                            <span>Link unavailable</span>
+                            <span className="visually-hidden">. Invalid or broken link.</span>
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       </div>
 
       <div className="ask">
