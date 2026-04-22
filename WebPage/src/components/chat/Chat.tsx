@@ -57,6 +57,7 @@ export default function Chat({
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isOnline] = useState(true);
+  const [feedback, setFeedback] = useState<Record<string, "up" | "down">>({});
   const [activeTab, setActiveTab] = useState<ChatWidgetTab>("chat");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -186,6 +187,19 @@ export default function Chat({
     const baseMessages = messages.slice(0, idx);
     onMessagesChange(baseMessages);
     await sendMessage(retryUserText, baseMessages, { appendUserBubble: false });
+  };
+
+  const sendFeedback = async (messageId: string, rating: "up" | "down", answer: string, messagesSnapshot: ChatMessage[]) => {
+    if (feedback[messageId]) return;
+    setFeedback((prev) => ({ ...prev, [messageId]: rating }));
+    const idx = messagesSnapshot.findIndex((m) => m.id === messageId);
+    const question = idx > 0 ? messagesSnapshot[idx - 1].text : "";
+    const endpoint = API_URL ? `${API_URL}/api/feedback` : "/api/feedback";
+    await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question, answer, rating }),
+    }).catch(() => {});
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -383,6 +397,24 @@ export default function Chat({
               >
                 {formatMessageTime(message.timestamp)}
               </time>
+              {message.role === "assistant" && message.meta?.kind !== "error" && (
+                <div className="chat-feedback">
+                  <button
+                    type="button"
+                    className={`chat-feedback-btn${feedback[message.id] === "up" ? " chat-feedback-btn--selected" : ""}`}
+                    disabled={!!feedback[message.id]}
+                    aria-label="Helpful"
+                    onClick={() => sendFeedback(message.id, "up", message.text, messages)}
+                  >👍</button>
+                  <button
+                    type="button"
+                    className={`chat-feedback-btn${feedback[message.id] === "down" ? " chat-feedback-btn--selected" : ""}`}
+                    disabled={!!feedback[message.id]}
+                    aria-label="Not helpful"
+                    onClick={() => sendFeedback(message.id, "down", message.text, messages)}
+                  >👎</button>
+                </div>
+              )}
             </div>
             {message.role === "user" && (
               <div

@@ -126,8 +126,11 @@ def get_response(user_message: str, conversation_history: list) -> str:
         for doc in results
     ])
 
+    # Exclude the last entry (current user message re-added below with context), keep last 5 pairs
+    prior_history = conversation_history[:-1][-10:]
+
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-    messages.extend(conversation_history)
+    messages.extend(prior_history)
     messages.append({
         "role": "user",
         "content": f"Context from university documents:\n{context}\n\nStudent question: {user_message}",
@@ -176,8 +179,10 @@ def get_response_stream(user_message: str, conversation_history: list):
         for doc in results
     ])
 
+    prior_history = conversation_history[:-1][-10:]
+
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-    messages.extend(conversation_history)
+    messages.extend(prior_history)
     messages.append({
         "role": "user",
         "content": f"Context from university documents:\n{context}\n\nStudent question: {user_message}",
