@@ -4,12 +4,12 @@ from collections import Counter
 from datetime import datetime, timezone, date
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from .chatbot import get_response
+from .chatbot import get_response, get_response_stream
 
 DOCUMENTS_DIR = os.path.join(os.path.dirname(__file__), "documents")
 LOG_FILE = os.path.join(os.path.dirname(__file__), "questions.log")
@@ -69,7 +69,19 @@ async def chat(request: Request, chat_request: ChatRequest):
         return ChatResponse(response=bot_response)
     finally:
         log_question(chat_request.message, answered)
+@app.post("/api/chat/stream")
 
+@limiter.limit("10/minute")
+async def chat_stream(request: Request, chat_request: ChatRequest):
+    def generate():
+        for token in get_response_stream(
+            user_message=chat_request.message,
+            conversation_history=chat_request.conversation_history,
+        ):
+            yield token
+
+    log_question(chat_request.message, True)
+    return StreamingResponse(generate(), media_type="text/plain")
 
 @app.get("/api/documents")
 async def documents():
